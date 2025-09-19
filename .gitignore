@@ -7,9 +7,6 @@
 volumes/
 data/
 
-# Backups
-backups/
-*.sql
 
 # Logs
 logs/
