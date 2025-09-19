@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 class ERPNextAPI:
     def __init__(self):
-        self.base_url = "http://erpnext.localhost:8000/api/resource"
+        self.base_url = "http://172.18.0.4:8001/api/resource"
         self.api_key = "54e8d25835474d3"
         self.api_secret = "f07c5b09a89a8e3"
         self.headers = {

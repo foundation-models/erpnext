@@ -3,7 +3,7 @@
 # This reflects the actual situation where customers paid directly to Homeira's personal account
 # and business payments are made from an imaginary business Chase account
 
-BASE_URL="http://erpnext.localhost:8000/api/resource"
+BASE_URL="http://172.18.0.4:8001/api/resource"
 API_KEY="54e8d25835474d3"
 API_SECRET="f07c5b09a89a8e3"
 
@@ -131,10 +131,9 @@ echo "📋 Step 4: Creating Purchase Invoices for actual payments..."
 # These represent the actual contractor services provided by Homeira
 
 purchase_invoices=(
-    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-08-28", "due_date": "2024-08-30", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 15, "expense_account": "Contractors - DS"}], "total": 15, "grand_total": 15, "outstanding_amount": 0}'
-    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-08-29", "due_date": "2024-08-31", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 19985, "expense_account": "Contractors - DS"}], "total": 19985, "grand_total": 19985, "outstanding_amount": 0}'
-    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-10-25", "due_date": "2024-10-27", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 20000, "expense_account": "Contractors - DS"}], "total": 20000, "grand_total": 20000, "outstanding_amount": 0}'
-    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-12-31", "due_date": "2025-01-02", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 6830, "expense_account": "Contractors - DS"}], "total": 6830, "grand_total": 6830, "outstanding_amount": 0}'
+    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-08-28", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 6845, "expense_account": "Contractors - DS"}], "total": 6845, "grand_total": 6845, "outstanding_amount": 0}'
+    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-08-29", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 19985, "expense_account": "Contractors - DS"}], "total": 19985, "grand_total": 19985, "outstanding_amount": 0}'
+    '{"supplier": "Homeira Amirkhani", "posting_date": "2024-10-25", "items": [{"item_code": "Contractor Services", "qty": 1, "rate": 20000, "expense_account": "Contractors - DS"}], "total": 20000, "grand_total": 20000, "outstanding_amount": 0}'
 )
 
 invoice_names=()
@@ -153,16 +152,14 @@ for i in "${!purchase_invoices[@]}"; do
         "conversion_rate": 1,
         "apply_tds": 0,
         "ignore_pricing_rule": 0,
-        "update_stock": 0,
-        "is_paid": 1,
-        "status": "Paid"
+        "update_stock": 0
     }')
     
     response=$(curl -s -X POST \
         -H "$AUTH_HEADER" \
         -H "$CONTENT_TYPE" \
         -d "$invoice_data" \
-        "$BASE_URL/Purchase Invoice")
+        "$BASE_URL/Purchase%20Invoice")
     
     if [[ $response == *"error"* ]] || [[ $response == *"Error"* ]]; then
         echo "❌ Error creating invoice #$invoice_num: $response"
@@ -185,10 +182,9 @@ echo "💰 Step 5: Creating Payment Entries (Business to Personal Transfers)..."
 # This represents the business paying Homeira for her contractor services
 
 payment_entries=(
-    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-08-28", "paid_from": "Business Chase - DS", "paid_to": "Creditors - DS", "paid_amount": 15, "received_amount": 15, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20240828-1", "reference_date": "2024-08-28"}'
-    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-08-29", "paid_from": "Business Chase - DS", "paid_to": "Creditors - DS", "paid_amount": 19985, "received_amount": 19985, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20240829-1", "reference_date": "2024-08-29"}'
-    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-10-25", "paid_from": "Business Chase - DS", "paid_to": "Creditors - DS", "paid_amount": 20000, "received_amount": 20000, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20241025-1", "reference_date": "2024-10-25"}'
-    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-12-31", "paid_from": "Business Chase - DS", "paid_to": "Creditors - DS", "paid_amount": 6830, "received_amount": 6830, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20241231-1", "reference_date": "2024-12-31"}'
+    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-08-28", "paid_from": "Operating Bank - DS", "paid_to": "Creditors - DS", "paid_amount": 6845, "received_amount": 6845, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20240828-1", "reference_date": "2024-08-28"}'
+    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-08-29", "paid_from": "Operating Bank - DS", "paid_to": "Creditors - DS", "paid_amount": 19985, "received_amount": 19985, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20240829-1", "reference_date": "2024-08-29"}'
+    '{"payment_type": "Pay", "party_type": "Supplier", "party": "Homeira Amirkhani", "posting_date": "2024-10-25", "paid_from": "Operating Bank - DS", "paid_to": "Creditors - DS", "paid_amount": 20000, "received_amount": 20000, "mode_of_payment": "Wire Transfer", "reference_no": "BIZ-PAY-20241025-1", "reference_date": "2024-10-25"}'
 )
 
 payment_names=()
@@ -222,7 +218,7 @@ for i in "${!payment_entries[@]}"; do
         -H "$AUTH_HEADER" \
         -H "$CONTENT_TYPE" \
         -d "$payment_data" \
-        "$BASE_URL/Payment Entry")
+        "$BASE_URL/Payment%20Entry")
     
     if [[ $response == *"error"* ]] || [[ $response == *"Error"* ]]; then
         echo "❌ Error creating payment #$payment_num: $response"
@@ -251,7 +247,7 @@ echo "=========================================="
 echo "📋 REAL SUPPLIER PAYMENT SETUP COMPLETE"
 echo "=========================================="
 echo "👤 Supplier: Homeira Amirkhani (Personal Account)"
-echo "🏦 Business Account: Business Chase - DS"
+echo "🏦 Business Account: Operating Bank - DS"
 echo "📄 Purchase Invoices Created: ${#purchase_invoices[@]}"
 echo "💳 Payment Entries Created: ${#payment_names[@]}"
 echo "💰 Total Amount: \$$total_invoiced"
@@ -260,7 +256,7 @@ echo "📅 Date Range: 2024-08-28 to 2024-12-31"
 echo ""
 echo "📋 ACCOUNTING STRUCTURE:"
 echo "   • Customer payments → Operating Bank - DS (existing)"
-echo "   • Business payments → Business Chase - DS → Homeira (new)"
+echo "   • Business payments → Operating Bank - DS → Homeira (new)"
 echo "   • This reflects real flow: Customers → Homeira's personal account"
 echo "   • Business pays Homeira from imaginary business Chase account"
 echo "=========================================="

@@ -2,7 +2,7 @@
 # ERPNext API script to identify and remove duplicate payment entries
 # This script will find duplicate payments and remove the redundant ones
 
-BASE_URL="http://erpnext.localhost:8000/api/resource"
+BASE_URL="http://172.18.0.4:8001/api/resource"
 API_KEY="54e8d25835474d3"
 API_SECRET="f07c5b09a89a8e3"
 
