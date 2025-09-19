@@ -1627,3 +1627,95 @@ You now have a fully working ERPNext installation with:
 - ✅ **ERPNext app fully functional**
 
 The current setup is working great! The IP address approach is actually quite common for development environments. 🚀
+
+____
+
+I'll help you find the API URL for ERPNext. Let me check the ERPNext configuration and documentation to determine the API endpoints.
+
+
+[2 tools called]
+
+Let me check the ERPNext documentation and configuration files for API information:
+
+
+[1 tool called]
+
+Now let me check if there are any API-related configurations in the ERPNext setup:
+
+
+[1 tool called]
+
+Great! Let me test a few more API endpoints to confirm the structure:
+
+
+[2 tools called]
+
+Perfect! The API is working. Let me also test the development server API:
+
+
+[1 tool called]
+
+## ✅ **ERPNext API URLs**
+
+Based on my testing, here are the API URLs for your ERPNext installation:
+
+### **Production Server (Port 8000)**
+- **Base API URL**: `http://erpnext.localhost:8000/api/`
+- **Ping Test**: `http://erpnext.localhost:8000/api/method/ping` ✅ (Returns `{"message":"pong"}`)
+
+### **Development Server (Port 8001)**
+- **Base API URL**: `http://172.18.0.4:8001/api/`
+- **Ping Test**: `http://172.18.0.4:8001/api/method/ping` ✅ (Working)
+
+## 📋 **API Endpoint Structure**
+
+### **1. Resource API (RESTful)**
+```
+http://erpnext.localhost:8000/api/resource/<DocType>
+http://erpnext.localhost:8000/api/resource/<DocType>/<name>
+```
+
+**Examples:**
+- `http://erpnext.localhost:8000/api/resource/User` - List all users
+- `http://erpnext.localhost:8000/api/resource/User/Administrator` - Get specific user
+- `http://erpnext.localhost:8000/api/resource/Item` - List all items
+- `http://erpnext.localhost:8000/api/resource/Customer` - List all customers
+
+### **2. Method API (Custom Functions)**
+```
+http://erpnext.localhost:8000/api/method/<method_name>
+```
+
+**Examples:**
+- `http://erpnext.localhost:8000/api/method/ping` - Health check
+- `http://erpnext.localhost:8000/api/method/frappe.auth.get_logged_user` - Get current user
+
+### **3. Authentication**
+Most API endpoints require authentication. You can authenticate using:
+- **API Key**: Add `Authorization: token <api_key>:<api_secret>` header
+- **Session**: Login via web interface first
+- **Basic Auth**: Username/password in headers
+
+## �� **Quick API Test Commands**
+
+```bash
+# Test API connectivity
+curl http://erpnext.localhost:8000/api/method/ping
+
+# Test with development server
+curl http://172.18.0.4:8001/api/method/ping
+
+# List users (requires authentication)
+curl -H "Authorization: token <api_key>:<api_secret>" \
+     http://erpnext.localhost:8000/api/resource/User
+```
+
+## 📚 **Next Steps**
+
+1. **Get API Keys**: Go to ERPNext → Settings → Users → API Keys
+2. **Test Authentication**: Use the API key to test protected endpoints
+3. **Explore DocTypes**: Check what data types are available via `/api/resource/`
+
+The API is fully functional on both your production and development servers! 🚀
+
+____
