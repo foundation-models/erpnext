@@ -1,0 +1,73 @@
+services:
+  mariadb:
+    image: mariadb:10.6
+    container_name: erpnext-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: erpnext_root_password
+      MYSQL_DATABASE: erpnext
+      MYSQL_USER: erpnext
+      MYSQL_PASSWORD: erpnext_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./config/mariadb.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - erpnext_network
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-buffer-pool-size=1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: erpnext-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - erpnext_network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  erpnext:
+    image: frappe/erpnext:latest
+    container_name: erpnext-app
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+      - redis
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=erpnext
+      - DB_USER=erpnext
+      - DB_PASSWORD=erpnext_password
+      - REDIS_CACHE=redis://redis:6379
+      - REDIS_QUEUE=redis://redis:6379
+      - REDIS_SOCKETIO=redis://redis:6379
+      - SOCKETIO_PORT=9000
+      - AUTO_MIGRATE=1
+      - ADMIN_PASSWORD=admin
+      - SITE_NAME=erpnext.localhost
+    volumes:
+      - sites_data:/home/frappe/frappe-bench/sites
+      - logs_data:/home/frappe/frappe-bench/logs
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    networks:
+      - erpnext_network
+
+volumes:
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local
+  sites_data:
+    driver: local
+  logs_data:
+    driver: local
+
+networks:
+  erpnext_network:
+    driver: bridge
