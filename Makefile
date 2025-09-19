@@ -1,7 +1,7 @@
 # ERPNext Installation Makefile
 # This Makefile installs ERPNext using Docker with fresh MariaDB and Redis
 
-.PHONY: help install install-auto install-prod dev-mode dev-switch fix-static run-with-static setup-dev-domain build-assets check-static install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup restore status restart update version check-ports stop-local-services init-site force-init-site
+.PHONY: help install install-auto install-prod dev-mode dev-switch fix-static run-with-static setup-dev-domain build-assets check-static install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup backup-db backup-site restore-db auto-restore list-backups clean-backups restore status restart update version check-ports stop-local-services init-site force-init-site
 
 # Default target
 help:
@@ -30,8 +30,14 @@ help:
 	@echo "  reset-all           - Complete reset (removes all data and containers)"
 	@echo "  logs                - Show logs from all services"
 	@echo "  shell               - Open shell in ERPNext container"
-	@echo "  backup              - Backup ERPNext database"
-	@echo "  restore             - Restore ERPNext database from backup"
+	@echo "  backup              - Create comprehensive backup (site + database)"
+	@echo "  backup-db           - Create database backup only (single transaction)"
+	@echo "  backup-site         - Create ERPNext site backup only"
+	@echo "  restore-db          - Restore database from backup"
+	@echo "  auto-restore        - Auto-restore latest backup if database is empty"
+	@echo "  list-backups        - List all available backups"
+	@echo "  clean-backups       - Clean old backups (keep last 10)"
+	@echo "  restore             - Show available backups and restore instructions (legacy)"
 	@echo "  status              - Show status of all services"
 	@echo "  restart             - Quick restart of all services"
 	@echo "  update              - Update ERPNext to latest version"
@@ -140,6 +146,8 @@ install: check-ports stop-old clean-old
 	docker compose up -d erpnext
 	@echo "Waiting for ERPNext container to be ready..."
 	@sleep 30
+	@echo "Checking for existing database and auto-restoring if needed..."
+	@$(MAKE) auto-restore
 	@echo "Initializing ERPNext site..."
 	@timeout=30; \
 	while [ $$timeout -gt 0 ]; do \
@@ -381,18 +389,97 @@ logs:
 shell:
 	docker compose exec erpnext bash
 
-# Backup database
-backup:
-	@echo "Creating database backup..."
+# Create MariaDB database backup (single transaction for consistency)
+backup-db:
+	@echo "Creating MariaDB database backup..."
 	@mkdir -p backups
-	docker compose exec mariadb mysqldump -u root -p$$MYSQL_ROOT_PASSWORD --all-databases > backups/erpnext_backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "Backup created in backups/ directory"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	docker compose exec mariadb mysqldump --single-transaction --routines --triggers \
+		-u erpnext -perpnext_password erpnext > backups/erpnext_db_$$TIMESTAMP.sql; \
+	echo "Database backup created: backups/erpnext_db_$$TIMESTAMP.sql"
+
+# Create ERPNext site backup
+backup-site:
+	@echo "Creating ERPNext site backup..."
+	docker compose exec erpnext bench --site erpnext.localhost backup
+	@echo "ERPNext site backup completed! Check the sites/erpnext.localhost/private/backups/ directory"
+
+# Create comprehensive backup (both ERPNext site and database)
+backup:
+	@echo "Creating comprehensive backup (ERPNext site + database)..."
+	@mkdir -p backups
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	echo "Creating ERPNext site backup..."; \
+	docker compose exec erpnext bench --site erpnext.localhost backup; \
+	echo "Creating database backup..."; \
+	docker compose exec mariadb mysqldump --single-transaction --routines --triggers \
+		-u erpnext -perpnext_password erpnext > backups/erpnext_db_$$TIMESTAMP.sql; \
+	echo "Comprehensive backup completed!"
+	@echo "Files created:"
+	@echo "  - ERPNext site backup: sites/erpnext.localhost/private/backups/"
+	@echo "  - Database backup: backups/erpnext_db_$$(date +%Y%m%d_%H%M%S).sql"
 
 # Restore database from backup
+restore-db:
+	@echo "Available database backups:"
+	@ls -la backups/erpnext_db_*.sql 2>/dev/null || echo "No database backups found"
+	@echo ""
+	@echo "Usage: make restore-db BACKUP_FILE=backups/erpnext_db_YYYYMMDD_HHMMSS.sql"
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "Error: Please specify BACKUP_FILE parameter"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(BACKUP_FILE)" ]; then \
+		echo "Error: Backup file $(BACKUP_FILE) not found"; \
+		exit 1; \
+	fi
+	@echo "Restoring database from $(BACKUP_FILE)..."
+	@echo "WARNING: This will overwrite the current database!"
+	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
+	docker compose exec -T mariadb mysql -u erpnext -perpnext_password erpnext < $(BACKUP_FILE)
+	@echo "Database restored successfully!"
+
+# Auto-restore latest database backup if database is empty
+auto-restore:
+	@echo "Checking if database is empty..."
+	@DB_EXISTS=$$(docker compose exec mariadb mysql -u erpnext -perpnext_password -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erpnext';" -s -N 2>/dev/null || echo "0"); \
+	if [ "$$DB_EXISTS" = "0" ]; then \
+		echo "Database is empty, looking for latest backup..."; \
+		LATEST_BACKUP=$$(ls -t backups/erpnext_db_*.sql 2>/dev/null | head -1); \
+		if [ -n "$$LATEST_BACKUP" ]; then \
+			echo "Found latest backup: $$LATEST_BACKUP"; \
+			echo "Auto-restoring database..."; \
+			docker compose exec -T mariadb mysql -u erpnext -perpnext_password erpnext < $$LATEST_BACKUP; \
+			echo "Database auto-restored from $$LATEST_BACKUP"; \
+		else \
+			echo "No database backups found, database will remain empty"; \
+		fi; \
+	else \
+		echo "Database already contains data ($$DB_EXISTS tables), skipping auto-restore"; \
+	fi
+
+# List all backups
+list-backups:
+	@echo "=== ERPNext Site Backups ==="
+	@docker compose exec erpnext find /home/frappe/frappe-bench/sites/erpnext.localhost/private/backups -name "*.tar.gz" -type f 2>/dev/null | head -10 || echo "No site backups found"
+	@echo ""
+	@echo "=== Database Backups ==="
+	@ls -la backups/erpnext_db_*.sql 2>/dev/null || echo "No database backups found"
+
+# Clean old backups (keep last 10)
+clean-backups:
+	@echo "Cleaning old backups (keeping last 10)..."
+	@echo "Database backups:"
+	@ls -t backups/erpnext_db_*.sql 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || echo "No old database backups to clean"
+	@echo "Site backups:"
+	@docker compose exec erpnext find /home/frappe/frappe-bench/sites/erpnext.localhost/private/backups -name "*.tar.gz" -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | head -n -10 | cut -d' ' -f2- | xargs rm -f 2>/dev/null || echo "No old site backups to clean"
+	@echo "Backup cleanup completed!"
+
+# Legacy restore command (for backward compatibility)
 restore:
 	@echo "Available backups:"
 	@ls -la backups/*.sql 2>/dev/null || echo "No backups found"
-	@echo "To restore, run: docker compose exec -T mariadb mysql -u root -p$$MYSQL_ROOT_PASSWORD < backups/your_backup_file.sql"
+	@echo "To restore, run: make restore-db BACKUP_FILE=backups/your_backup_file.sql"
 
 # Show status
 status:
