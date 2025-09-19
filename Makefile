@@ -1,7 +1,7 @@
 # ERPNext Installation Makefile
 # This Makefile installs ERPNext using Docker with fresh MariaDB and Redis
 
-.PHONY: help install install-auto install-prod dev-mode dev-switch fix-static run-with-static build-assets check-static install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup restore status restart update version check-ports stop-local-services init-site force-init-site
+.PHONY: help install install-auto install-prod dev-mode dev-switch fix-static run-with-static setup-dev-domain build-assets check-static install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup restore status restart update version check-ports stop-local-services init-site force-init-site
 
 # Default target
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  dev-switch          - Switch existing installation to development mode"
 	@echo "  fix-static          - Fix static files issue (builds assets and configures serving)"
 	@echo "  run-with-static     - Run ERPNext with static files support (development mode)"
+	@echo "  setup-dev-domain    - Setup domain mapping for development server"
 	@echo "  build-assets        - Build static assets (CSS, JS, images) for production"
 	@echo "  check-static        - Check if static files are being served correctly"
 	@echo "  init-site           - Initialize ERPNext site (run after install if needed)"
@@ -342,6 +343,20 @@ run-with-static:
 	@echo "Static files will be served automatically!"
 	@echo "Login with: Administrator / admin"
 	docker compose exec erpnext bench --site erpnext.localhost serve --port 8001
+
+# Setup domain mapping for development server
+setup-dev-domain:
+	@echo "Setting up domain mapping for development server..."
+	@echo "Adding erpnext.localhost to /etc/hosts..."
+	@if ! grep -q "erpnext.localhost" /etc/hosts; then \
+		echo "127.0.0.1 erpnext.localhost" | sudo tee -a /etc/hosts; \
+		echo "Added erpnext.localhost to /etc/hosts"; \
+	else \
+		echo "erpnext.localhost already exists in /etc/hosts"; \
+	fi
+	@echo "Domain mapping setup complete!"
+	@echo "You can now access ERPNext at: http://erpnext.localhost:8001"
+	@echo "Make sure to run 'make run-with-static' to start the development server"
 
 # Install and build assets for production
 install-prod: install build-assets
