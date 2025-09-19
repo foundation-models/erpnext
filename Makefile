@@ -330,16 +330,18 @@ run-with-static:
 	@sleep 15
 	@echo "Building static assets..."
 	docker compose exec erpnext bench build --app erpnext
-	@echo "Configuring static file serving..."
-	docker compose exec erpnext bench --site erpnext.localhost set-config serve_static_files true
-	@echo "Restarting ERPNext service..."
-	docker compose restart erpnext
-	@echo "Waiting for service to be ready..."
-	@sleep 10
-	@echo "ERPNext is now running with static files support!"
-	@echo "Access ERPNext at: http://erpnext.localhost:8000"
-	@echo "Default credentials: Administrator / admin"
-	@echo "Static files should now be working!"
+	@echo "Stopping production server..."
+	docker compose stop erpnext
+	@echo "Starting container for development mode..."
+	docker compose start erpnext
+	@echo "Waiting for container to be ready..."
+	@sleep 5
+	@echo "Starting development server (this will run in foreground)..."
+	@echo "Press Ctrl+C to stop the server"
+	@echo "Access ERPNext at: http://erpnext.localhost:8001"
+	@echo "Static files will be served automatically!"
+	@echo "Login with: Administrator / admin"
+	docker compose exec erpnext bench --site erpnext.localhost serve --port 8001
 
 # Install and build assets for production
 install-prod: install build-assets
