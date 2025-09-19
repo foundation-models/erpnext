@@ -1,7 +1,7 @@
 # ERPNext Installation Makefile
 # This Makefile installs ERPNext using Docker with fresh MariaDB and Redis
 
-.PHONY: help install install-auto install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup restore status restart update version check-ports stop-local-services init-site force-init-site
+.PHONY: help install install-auto install-prod dev-mode dev-switch fix-static run-with-static build-assets check-static install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup restore status restart update version check-ports stop-local-services init-site force-init-site
 
 # Default target
 help:
@@ -14,6 +14,13 @@ help:
 	@echo "  stop-local-services - Stop local MariaDB and Redis services"
 	@echo "  install             - Install ERPNext with fresh MariaDB and Redis"
 	@echo "  install-auto        - Install ERPNext (stops local services automatically)"
+	@echo "  install-prod        - Install ERPNext with static assets built for production"
+	@echo "  dev-mode            - Run ERPNext in development mode (with static file serving)"
+	@echo "  dev-switch          - Switch existing installation to development mode"
+	@echo "  fix-static          - Fix static files issue (builds assets and configures serving)"
+	@echo "  run-with-static     - Run ERPNext with static files support (development mode)"
+	@echo "  build-assets        - Build static assets (CSS, JS, images) for production"
+	@echo "  check-static        - Check if static files are being served correctly"
 	@echo "  init-site           - Initialize ERPNext site (run after install if needed)"
 	@echo "  force-init-site     - Force recreate ERPNext site (removes existing site)"
 	@echo "  stop                - Stop all ERPNext services"
@@ -255,6 +262,102 @@ reset-all: stop
 	docker network rm erpnext_erpnext_network 2>/dev/null || true
 	docker system prune -f
 	@echo "Complete reset finished. Run 'make install' to start fresh."
+
+# Build static files for production
+build-assets:
+	@echo "Building static assets..."
+	docker compose exec erpnext bench build --app erpnext
+	@echo "Configuring static file serving..."
+	docker compose exec erpnext bench --site erpnext.localhost set-config serve_static_files true
+	@echo "Restarting ERPNext service to serve static files..."
+	docker compose restart erpnext
+	@echo "Static assets built and service restarted successfully!"
+
+# Run in development mode (with auto-reload and static file serving)
+dev-mode: install
+	@echo "Setting up development mode..."
+	@echo "Building static assets..."
+	docker compose exec erpnext bench build --app erpnext
+	@echo "Stopping production server..."
+	docker compose stop erpnext
+	@echo "Starting development server..."
+	docker compose exec erpnext bench --site erpnext.localhost serve --port 8000
+	@echo "Development mode started!"
+	@echo "Access ERPNext at: http://erpnext.localhost:8000"
+	@echo "Static files will be served automatically in development mode."
+
+# Switch to development mode (for existing installations)
+dev-switch:
+	@echo "Switching to development mode..."
+	@echo "Building static assets..."
+	docker compose exec erpnext bench build --app erpnext
+	@echo "Stopping production server..."
+	docker compose stop erpnext
+	@echo "Starting container for development mode..."
+	docker compose start erpnext
+	@echo "Waiting for container to be ready..."
+	@sleep 5
+	@echo "Starting development server in background..."
+	docker compose exec -d erpnext bench --site erpnext.localhost serve --port 8000
+	@echo "Development mode started!"
+	@echo "Access ERPNext at: http://erpnext.localhost:8000"
+	@echo "Static files will be served automatically in development mode."
+	@echo "To stop development mode, run: make stop"
+
+# Fix static files issue (simple solution)
+fix-static:
+	@echo "Fixing static files issue..."
+	@echo "Building static assets..."
+	docker compose exec erpnext bench build --app erpnext
+	@echo "Configuring static file serving..."
+	docker compose exec erpnext bench --site erpnext.localhost set-config serve_static_files true
+	@echo "Restarting ERPNext service..."
+	docker compose restart erpnext
+	@echo "Static files should now be working!"
+	@echo "Access ERPNext at: http://erpnext.localhost:8000"
+	@echo "If static files still don't work, run: make dev-switch"
+
+# Run with static files (development mode - recommended for static files)
+run-with-static:
+	@echo "Running ERPNext with static files support..."
+	@echo "Starting all services..."
+	docker compose up -d mariadb redis
+	@echo "Waiting for database to be ready..."
+	@sleep 10
+	@echo "Starting ERPNext container..."
+	docker compose up -d erpnext
+	@echo "Waiting for ERPNext container to be ready..."
+	@sleep 15
+	@echo "Building static assets..."
+	docker compose exec erpnext bench build --app erpnext
+	@echo "Stopping production server..."
+	docker compose stop erpnext
+	@echo "Waiting for port to be free..."
+	@sleep 5
+	@echo "Starting container for development mode..."
+	docker compose start erpnext
+	@echo "Waiting for container to be ready..."
+	@sleep 5
+	@echo "Starting development server (this will run in foreground)..."
+	@echo "Press Ctrl+C to stop the server"
+	@echo "Access ERPNext at: http://erpnext.localhost:8001"
+	@echo "Static files will be served automatically!"
+	docker compose exec erpnext bench --site erpnext.localhost serve --port 8001
+
+# Install and build assets for production
+install-prod: install build-assets
+	@echo "Production installation completed with static assets!"
+	@echo "Access ERPNext at: http://erpnext.localhost:8000"
+
+# Check if static files are being served
+check-static:
+	@echo "Checking static file serving..."
+	@echo "Testing main page..."
+	@curl -s -o /dev/null -w "Main page: %{http_code}\n" http://erpnext.localhost:8000
+	@echo "Testing static assets..."
+	@curl -s -o /dev/null -w "CSS files: %{http_code}\n" http://erpnext.localhost:8000/assets/erpnext/dist/css/erpnext.bundle.XLIQXJGK.css
+	@curl -s -o /dev/null -w "JS files: %{http_code}\n" http://erpnext.localhost:8000/assets/erpnext/dist/js/erpnext.bundle.Z6C6MIAE.js
+	@echo "Static file check completed!"
 
 # Show logs
 logs:
