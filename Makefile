@@ -1,22 +1,97 @@
 # ERPNext Installation Makefile
 # This Makefile installs ERPNext using Docker with fresh MariaDB and Redis
 
-.PHONY: help install stop clean reset-db logs shell backup restore
+.PHONY: help install install-auto install-deps setup-docker stop stop-old clean-old clean reset-db reset-all logs shell backup restore status restart update version check-ports stop-local-services init-site force-init-site
 
 # Default target
 help:
 	@echo "ERPNext Docker Installation"
 	@echo "=========================="
 	@echo "Available targets:"
-	@echo "  install     - Install ERPNext with fresh MariaDB and Redis"
-	@echo "  stop        - Stop all ERPNext services"
-	@echo "  clean       - Remove all containers, volumes, and networks"
-	@echo "  reset-db    - Reset MariaDB database (removes all data)"
-	@echo "  logs        - Show logs from all services"
-	@echo "  shell       - Open shell in ERPNext container"
-	@echo "  backup      - Backup ERPNext database"
-	@echo "  restore     - Restore ERPNext database from backup"
-	@echo "  status      - Show status of all services"
+	@echo "  install-deps        - Install system dependencies"
+	@echo "  setup-docker        - Set up Docker environment"
+	@echo "  check-ports         - Check if required ports are available"
+	@echo "  stop-local-services - Stop local MariaDB and Redis services"
+	@echo "  install             - Install ERPNext with fresh MariaDB and Redis"
+	@echo "  install-auto        - Install ERPNext (stops local services automatically)"
+	@echo "  init-site           - Initialize ERPNext site (run after install if needed)"
+	@echo "  force-init-site     - Force recreate ERPNext site (removes existing site)"
+	@echo "  stop                - Stop all ERPNext services"
+	@echo "  clean               - Remove all containers, volumes, and networks"
+	@echo "  reset-db            - Reset MariaDB database (removes all data)"
+	@echo "  reset-all           - Complete reset (removes all data and containers)"
+	@echo "  logs                - Show logs from all services"
+	@echo "  shell               - Open shell in ERPNext container"
+	@echo "  backup              - Backup ERPNext database"
+	@echo "  restore             - Restore ERPNext database from backup"
+	@echo "  status              - Show status of all services"
+	@echo "  restart             - Quick restart of all services"
+	@echo "  update              - Update ERPNext to latest version"
+	@echo "  version             - Show ERPNext version"
+
+# Install system dependencies
+install-deps:
+	@echo "Installing system dependencies..."
+	sudo apt-get update -y
+	sudo apt-get install -y \
+		curl \
+		git \
+		make \
+		docker.io \
+		python3 \
+		python3-pip \
+		nodejs \
+		npm \
+		redis-server \
+		mariadb-server \
+		mariadb-client \
+		libmariadb-dev-compat \
+		libmariadb-dev \
+		libssl-dev \
+		libffi-dev \
+		libcairo2-dev \
+		libpango1.0-dev \
+		libgdk-pixbuf2.0-dev \
+		libffi-dev \
+		shared-mime-info
+	@echo "System dependencies installed successfully!"
+
+# Set up Docker environment
+setup-docker:
+	@echo "Setting up Docker environment..."
+	sudo systemctl enable docker
+	sudo systemctl start docker
+	sudo usermod -aG docker $$USER
+	@echo "Docker environment set up successfully!"
+	@echo "Please log out and log back in for Docker group changes to take effect."
+
+# Check if required ports are available
+check-ports:
+	@echo "Checking port availability..."
+	@if netstat -tlnp 2>/dev/null | grep -q ":3306 "; then \
+		echo "WARNING: Port 3306 (MariaDB) is already in use"; \
+		echo "Run 'make stop-local-services' to stop local MariaDB"; \
+		exit 1; \
+	fi
+	@if netstat -tlnp 2>/dev/null | grep -q ":6379 "; then \
+		echo "WARNING: Port 6379 (Redis) is already in use"; \
+		echo "Run 'make stop-local-services' to stop local Redis"; \
+		exit 1; \
+	fi
+	@if netstat -tlnp 2>/dev/null | grep -q ":8000 "; then \
+		echo "WARNING: Port 8000 (ERPNext) is already in use"; \
+		exit 1; \
+	fi
+	@echo "All required ports are available!"
+
+# Stop local MariaDB and Redis services
+stop-local-services:
+	@echo "Stopping local MariaDB and Redis services..."
+	@sudo systemctl stop mariadb 2>/dev/null || echo "MariaDB service not running or not found"
+	@sudo systemctl stop redis-server 2>/dev/null || echo "Redis service not running or not found"
+	@sudo systemctl disable mariadb 2>/dev/null || echo "MariaDB service not found"
+	@sudo systemctl disable redis-server 2>/dev/null || echo "Redis service not found"
+	@echo "Local services stopped successfully!"
 
 # Stop any existing ERPNext services
 stop-old:
@@ -32,22 +107,127 @@ clean-old:
 	@docker network rm erpnext_network 2>/dev/null || true
 
 # Install ERPNext with fresh setup
-install: stop-old clean-old
+install: check-ports stop-old clean-old
 	@echo "Installing ERPNext with fresh MariaDB and Redis..."
 	@echo "This will create a completely new installation."
-	@echo "Starting services..."
+	@echo "Starting MariaDB and Redis services..."
 	docker compose up -d mariadb redis
 	@echo "Waiting for MariaDB to be ready..."
-	@sleep 30
+	@timeout=60; \
+	while [ $$timeout -gt 0 ]; do \
+		if docker compose exec mariadb mysqladmin ping -h localhost --silent 2>/dev/null; then \
+			echo "MariaDB is ready!"; \
+			break; \
+		fi; \
+		echo "Waiting for MariaDB... ($$timeout seconds remaining)"; \
+		sleep 5; \
+		timeout=$$((timeout-5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "ERROR: MariaDB failed to start within 60 seconds"; \
+		docker compose logs mariadb; \
+		exit 1; \
+	fi
 	@echo "Starting ERPNext application..."
 	docker compose up -d erpnext
-	@echo "Waiting for ERPNext to initialize..."
-	@sleep 60
+	@echo "Waiting for ERPNext container to be ready..."
+	@sleep 30
+	@echo "Initializing ERPNext site..."
+	@timeout=30; \
+	while [ $$timeout -gt 0 ]; do \
+		if docker compose exec mariadb mysqladmin ping -h localhost --silent 2>/dev/null; then \
+			echo "MariaDB is ready for site initialization"; \
+			break; \
+		fi; \
+		echo "Waiting for MariaDB... ($$timeout seconds remaining)"; \
+		sleep 5; \
+		timeout=$$((timeout-5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "ERROR: MariaDB not ready for site initialization"; \
+		exit 1; \
+	fi
+	@echo "Creating ERPNext site..."
+	docker compose exec erpnext bench new-site erpnext.localhost --admin-password admin --db-root-password erpnext_root_password --db-root-username root --mariadb-root-password erpnext_root_password --db-host mariadb --db-name erpnext --db-user erpnext --db-password erpnext_password --force || echo "Site may already exist, continuing..."
+	@echo "Installing ERPNext app..."
+	docker compose exec erpnext bench --site erpnext.localhost install-app erpnext || echo "ERPNext app may already be installed, continuing..."
+	@echo "Waiting for ERPNext to be fully ready..."
+	@timeout=60; \
+	while [ $$timeout -gt 0 ]; do \
+		if curl -s http://erpnext.localhost:8000 >/dev/null 2>&1; then \
+			echo "ERPNext is ready!"; \
+			break; \
+		fi; \
+		echo "Waiting for ERPNext... ($$timeout seconds remaining)"; \
+		sleep 10; \
+		timeout=$$((timeout-10)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "WARNING: ERPNext may not be fully ready yet"; \
+		echo "Check logs with: make logs"; \
+	fi
+	@echo ""
 	@echo "ERPNext installation completed!"
-	@echo "Access ERPNext at: http://localhost:8000"
+	@echo "Access ERPNext at: http://erpnext.localhost:8000"
 	@echo "Default credentials:"
 	@echo "  Username: Administrator"
 	@echo "  Password: admin"
+	@echo ""
+	@echo "Useful commands:"
+	@echo "  make logs    - View service logs"
+	@echo "  make status  - Check service status"
+	@echo "  make shell   - Open shell in ERPNext container"
+
+# Initialize ERPNext site
+init-site:
+	@echo "Initializing ERPNext site..."
+	@timeout=30; \
+	while [ $$timeout -gt 0 ]; do \
+		if docker compose exec mariadb mysqladmin ping -h localhost --silent 2>/dev/null; then \
+			echo "MariaDB is ready for site initialization"; \
+			break; \
+		fi; \
+		echo "Waiting for MariaDB... ($$timeout seconds remaining)"; \
+		sleep 5; \
+		timeout=$$((timeout-5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "ERROR: MariaDB not ready for site initialization"; \
+		exit 1; \
+	fi
+	@echo "Creating ERPNext site..."
+	docker compose exec erpnext bench new-site erpnext.localhost --admin-password admin --db-root-password erpnext_root_password --db-root-username root --mariadb-root-password erpnext_root_password --db-host mariadb --db-name erpnext --db-user erpnext --db-password erpnext_password --force || echo "Site may already exist, continuing..."
+	@echo "Installing ERPNext app..."
+	docker compose exec erpnext bench --site erpnext.localhost install-app erpnext || echo "ERPNext app may already be installed, continuing..."
+	@echo "Site initialization completed!"
+
+# Force recreate ERPNext site (removes existing site and creates new one)
+force-init-site:
+	@echo "Force recreating ERPNext site..."
+	@timeout=30; \
+	while [ $$timeout -gt 0 ]; do \
+		if docker compose exec mariadb mysqladmin ping -h localhost --silent 2>/dev/null; then \
+			echo "MariaDB is ready for site initialization"; \
+			break; \
+		fi; \
+		echo "Waiting for MariaDB... ($$timeout seconds remaining)"; \
+		sleep 5; \
+		timeout=$$((timeout-5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "ERROR: MariaDB not ready for site initialization"; \
+		exit 1; \
+	fi
+	@echo "Removing existing site..."
+	docker compose exec erpnext bench drop-site erpnext.localhost --force || echo "Site may not exist, continuing..."
+	@echo "Creating new ERPNext site..."
+	docker compose exec erpnext bench new-site erpnext.localhost --admin-password admin --db-root-password erpnext_root_password --db-root-username root --mariadb-root-password erpnext_root_password
+	@echo "Installing ERPNext app..."
+	docker compose exec erpnext bench --site erpnext.localhost install-app erpnext
+	@echo "Site force initialization completed!"
+
+# Install with automatic local service stopping
+install-auto: stop-local-services install
 
 # Stop all services
 stop:
@@ -66,6 +246,15 @@ reset-db: stop
 	docker volume rm erpnext_mariadb_data 2>/dev/null || true
 	docker volume rm erpnext_sites 2>/dev/null || true
 	@echo "Database reset completed. Run 'make install' to start fresh."
+
+# Complete reset (removes all data and containers)
+reset-all: stop
+	@echo "Performing complete reset..."
+	docker compose down -v --remove-orphans
+	docker volume rm erpnext_mariadb_data erpnext_redis_data erpnext_sites erpnext_logs 2>/dev/null || true
+	docker network rm erpnext_erpnext_network 2>/dev/null || true
+	docker system prune -f
+	@echo "Complete reset finished. Run 'make install' to start fresh."
 
 # Show logs
 logs:
