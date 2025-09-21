@@ -275,3 +275,4 @@ echo "💡 NOTE: This setup reflects the real situation where:"
 echo "   1. Customers (MDC/PI) paid directly to Homeira's personal Chase account"
 echo "   2. Business records payments to Homeira from an imaginary business Chase account"
 echo "   3. This provides proper expense tracking while reflecting actual cash flow"
+

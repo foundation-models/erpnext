@@ -250,3 +250,4 @@ echo "🔍 You can now view these records in the ERPNext interface:"
 echo "   - Purchase Invoices: Purchase → Purchase Invoice"
 echo "   - Payment Entries: Accounts → Payment Entry"
 echo "   - Supplier: Buying → Supplier"
+

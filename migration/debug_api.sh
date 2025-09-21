@@ -53,3 +53,4 @@ response=$(curl -s -X GET \
     "$BASE_URL/Supplier?fields=[\"name\",\"supplier_name\"]&limit_page_length=10")
 
 echo "All Suppliers: $response"
+

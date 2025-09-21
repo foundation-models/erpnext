@@ -53,3 +53,4 @@ echo "🔍 Checking account entries for comparison..."
 account_response=$(curl -s -X GET -H "$AUTH_HEADER" "$BASE_URL/Account?limit_page_length=3")
 echo "Account response:"
 echo "$account_response"
+

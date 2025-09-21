@@ -192,3 +192,4 @@ If you encounter issues:
 4. **Validation Errors**: Check that all required fields are filled and dates are valid
 
 For automated setup, use the `setup_supplier_payment.sh` script instead of manual entry.
+

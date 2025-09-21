@@ -109,3 +109,4 @@ echo "   1. Check if the 'duplicates' are actually different entries with same d
 echo "   2. Look for entries with same reference numbers"
 echo "   3. Identify if the issue is in the UI display or actual data"
 echo "   4. Consider if entries need to be submitted instead of left as drafts"
+
