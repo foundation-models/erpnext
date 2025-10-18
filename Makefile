@@ -18,6 +18,7 @@ help:
 	@echo "  dev-mode            - Run ERPNext in development mode (with static file serving)"
 	@echo "  dev-switch          - Switch existing installation to development mode"
 	@echo "  fix-static          - Fix static files issue (builds assets and configures serving)"
+	@echo "  start-with-nginx    - Start ERPNext with Nginx for full static file support (recommended)"
 	@echo "  run-with-static     - Run ERPNext with static files support (development mode)"
 	@echo "  setup-dev-domain    - Setup domain mapping for development server"
 	@echo "  build-assets        - Build static assets (CSS, JS, images) for production"
@@ -325,6 +326,14 @@ fix-static:
 	@echo "Static files should now be working!"
 	@echo "Access ERPNext at: http://erpnext.localhost:8000"
 	@echo "If static files still don't work, run: make dev-switch"
+
+# Start ERPNext with Nginx (recommended for full static file support)
+start-with-nginx:
+	@echo "Starting ERPNext with Nginx..."
+	docker compose up -d
+	@echo "Nginx is proxying requests to ERPNext development server"
+	@echo "Access ERPNext at: http://erpnext.localhost:8000"
+	@echo "Login with: Administrator / admin"
 
 # Run with static files (development mode - recommended for static files)
 run-with-static:

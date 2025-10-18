@@ -54,3 +54,13 @@ response=$(curl -s -X GET \
 
 echo "All Suppliers: $response"
 
+
+
+
+
+
+
+
+
+
+

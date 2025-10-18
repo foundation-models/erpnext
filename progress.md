@@ -2077,4 +2077,66 @@ Right now, we've only completed **Step 1** - the expense recognition. The system
 
 Would you like me to help set up the complete credit card payment flow, or are you satisfied with just having the expenses recorded for now?
 
-____
+████████████████████████████████████████████████████
+I'll add Nginx to properly serve static files for the ERPNext web UI. Let me create the necessary configuration files and update docker-compose.yml.
+
+[45 tools called]
+
+## ✅ Nginx Setup Complete!
+
+I've successfully added Nginx to your ERPNext setup to fix the web UI static files issue. Here's what was implemented:
+
+### **What Changed:**
+
+1. **Created Nginx Configuration** (`nginx/nginx.conf`):
+   - Reverse proxy setup with two upstream servers:
+     - `erpnext` (port 8000) - Main application
+     - `socketio` (port 9000) - WebSocket connections
+   - Proxies `/assets` and `/files` to ERPNext
+   - Handles Socket.IO connections for real-time features
+   - Sets proper caching headers (30 days for assets, 7 days for files)
+
+2. **Updated Docker Compose** (`docker-compose.yml`):
+   - Added Nginx service (port 8000 exposed to host)
+   - Modified ERPNext to run development server: `bench --site erpnext.localhost serve --port 8000 --noreload`
+   - Development server serves static files directly (solving the symlink issue)
+
+3. **Updated Makefile**:
+   - Added `start-with-nginx` command for easy startup
+   - Updated help documentation
+
+4. **Created Documentation** (`nginx/README.md`):
+   - Architecture overview
+   - Troubleshooting guide
+   - Usage instructions
+
+### **Why Development Server?**
+
+The ERPNext production server (gunicorn) doesn't serve static files. Normally, Nginx would serve them directly, but ERPNext's assets use symlinks to app directories that aren't accessible to the Nginx container. The development server (`bench serve`) handles static files internally, solving this issue.
+
+### **Current Status:**
+
+```
+✅ All containers running
+✅ Nginx proxying to ERPNext (port 8000)
+✅ Static files loading correctly (CSS, JS, images)
+✅ Main page accessible: http://erpnext.localhost:8000
+```
+
+### **To Use:**
+
+```bash
+# Start everything (already running)
+cd /home/agent/workspace/erpnext
+make start-with-nginx
+
+# Or manually
+docker compose up -d
+
+# Access ERPNext
+# URL: http://erpnext.localhost:8000
+# Login: Administrator / admin
+```
+
+The web UI should now display correctly with all styles and images! 🎉
+████████████████████████████████████████████████████

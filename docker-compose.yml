@@ -52,9 +52,21 @@ services:
     volumes:
       - sites_data:/home/frappe/frappe-bench/sites
       - logs_data:/home/frappe/frappe-bench/logs
+    networks:
+      - erpnext_network
+    command: bench --site erpnext.localhost serve --port 8000 --noreload
+
+  nginx:
+    image: nginx:alpine
+    container_name: erpnext-nginx
+    restart: unless-stopped
+    depends_on:
+      - erpnext
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - sites_data:/home/frappe/frappe-bench/sites:ro
     ports:
-      - "8000:8000"
-      - "9000:9000"
+      - "8000:80"
     networks:
       - erpnext_network
 
