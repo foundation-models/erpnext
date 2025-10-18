@@ -12,6 +12,44 @@ This repository contains a complete Docker-based ERPNext installation with fresh
 
 ## Quick Start
 
+### Option 1: Restore from Existing Backup (Recommended)
+
+If you have existing ERPNext data, restore from a backup first:
+
+1. **List available backups**:
+   ```bash
+   make list-backups
+   ```
+
+2. **Restore database from backup**:
+   ```bash
+   make restore-db BACKUP_FILE=backups/erpnext_db_YYYYMMDD_HHMMSS.sql
+   ```
+
+3. **Start ERPNext with static assets**:
+   ```bash
+   make run-with-static
+   ```
+
+4. **Login to ERPNext**:
+   - **Email**: `hosseinakhlaghpour@gmail.com`
+   - **Password**: [your usual password]
+
+5. **Access ERPNext modules**:
+   - Suppliers: http://172.18.0.4:8001/app/supplier
+   - Customers: http://172.18.0.4:8001/app/customer
+   - Purchase Invoices: http://172.18.0.4:8001/app/purchase-invoice
+   - Main Dashboard: http://172.18.0.4:8001/app
+
+> **Note**: If you encounter login issues after restoring, reset your password:
+> ```bash
+> docker exec -it erpnext-app bench --site erpnext.localhost set-password hosseinakhlaghpour@gmail.com your_new_password
+> ```
+
+### Option 2: Fresh Installation
+
+For a brand new ERPNext instance:
+
 1. **Install ERPNext**:
    ```bash
    make install
@@ -27,13 +65,16 @@ This repository contains a complete Docker-based ERPNext installation with fresh
 | Command | Description |
 |---------|-------------|
 | `make install` | Install ERPNext with fresh MariaDB and Redis |
+| `make run-with-static` | Run ERPNext with static files support (development mode) |
+| `make list-backups` | List all available database backups |
+| `make restore-db` | Restore database from backup (requires BACKUP_FILE parameter) |
+| `make backup` | Create comprehensive backup (site + database) |
+| `make backup-db` | Create database backup only |
 | `make stop` | Stop all ERPNext services |
 | `make clean` | Remove all containers, volumes, and networks |
 | `make reset-db` | Reset MariaDB database (removes all data) |
 | `make logs` | Show logs from all services |
 | `make shell` | Open shell in ERPNext container |
-| `make backup` | Backup ERPNext database |
-| `make restore` | Restore ERPNext database from backup |
 | `make status` | Show status of all services |
 | `make restart` | Quick restart of all services |
 | `make update` | Update ERPNext to latest version |
@@ -98,15 +139,44 @@ make shell
 ## Backup and Restore
 
 ### Create Backup
+
+**Comprehensive backup (recommended)**:
 ```bash
 make backup
 ```
 
-### Restore from Backup
+**Database only**:
 ```bash
-make restore
-# Then manually restore: docker-compose exec -T mariadb mysql -u root -p$MYSQL_ROOT_PASSWORD < backups/your_backup_file.sql
+make backup-db
 ```
+
+### List Available Backups
+```bash
+make list-backups
+```
+
+### Restore from Backup
+
+1. **List available backups**:
+   ```bash
+   make list-backups
+   ```
+
+2. **Restore specific backup**:
+   ```bash
+   make restore-db BACKUP_FILE=backups/erpnext_db_20250920_175433.sql
+   ```
+
+3. **Reset passwords after restore** (if needed):
+   ```bash
+   # Reset Administrator password
+   docker exec -it erpnext-app bench --site erpnext.localhost set-admin-password newpassword123
+   
+   # Reset specific user password
+   docker exec -it erpnext-app bench --site erpnext.localhost set-password user@example.com newpassword123
+   ```
+
+> **Important**: Restoring a database will overwrite all current data and reset all user passwords to what they were at the time of the backup.
 
 ## Development
 

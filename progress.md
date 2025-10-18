@@ -2140,3 +2140,48 @@ docker compose up -d
 
 The web UI should now display correctly with all styles and images! 🎉
 ████████████████████████████████████████████████████
+I'll add the database restore instructions and login information to the ERPNext repository's README.md. Let me update it:
+
+[1 tool called]
+
+Now let me also update the Available Commands section to include the new commands:
+
+[1 tool called]
+
+Let me also update the Backup and Restore section for clarity:
+
+[1 tool called]
+
+Perfect! I've successfully updated the ERPNext repository's README.md with comprehensive instructions. Here's what I added:
+
+## ✅ Changes Made to `/home/agent/workspace/erpnext/README.md`:
+
+### 1. **Quick Start Section** - Now split into two options:
+   - **Option 1: Restore from Existing Backup (Recommended)** - Your preferred workflow
+     - List available backups
+     - Restore database command
+     - `make run-with-static` to start the server
+     - Login credentials: `hosseinakhlaghpour@gmail.com`
+     - Direct links to:
+       - http://172.18.0.4:8001/app/supplier
+       - http://172.18.0.4:8001/app/customer
+       - http://172.18.0.4:8001/app/purchase-invoice
+       - http://172.18.0.4:8001/app/payment-entry?payment_type=Receive
+       - http://172.18.0.4:8001/app
+     - Password reset instructions if needed
+   
+   - **Option 2: Fresh Installation** - For new instances
+
+### 2. **Available Commands Table** - Updated with:
+   - `make run-with-static` command
+   - `make list-backups` command
+   - `make restore-db` command with parameter note
+   - Reorganized backup commands
+
+### 3. **Backup and Restore Section** - Enhanced with:
+   - Clear step-by-step restore instructions
+   - Password reset commands after restore
+   - Important warning about data overwriting
+
+The README now provides a complete workflow for your use case: restoring from backup, starting ERPNext, and accessing specific modules with your credentials!
+████████████████████████████████████████████████████
