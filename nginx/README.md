@@ -94,3 +94,5 @@ docker compose up -d
 - For production, consider using a proper WSGI server with Nginx serving static files from a mounted volume
 - The `--noreload` flag prevents auto-reload to improve stability in containerized environment
 
+
+
