@@ -2185,3 +2185,366 @@ Perfect! I've successfully updated the ERPNext repository's README.md with compr
 
 The README now provides a complete workflow for your use case: restoring from backup, starting ERPNext, and accessing specific modules with your credentials!
 ████████████████████████████████████████████████████
+I'll help you investigate this MySQL error related to the Budget table. Let me search for where this query is being generated and understand the issue.
+
+[6 tools called]
+
+Now I understand the issue! Let me check what Accounting Dimensions are configured and if they exist properly in the Budget doctype.
+
+[3 tools called]
+
+Perfect! There's an Accounting Dimension for "Customer". Now let me check if the custom field exists in the Budget doctype:
+
+[1 tool called]
+
+Found the issue! The "Customer" Accounting Dimension exists but the corresponding custom field wasn't created in the Budget doctype. Let me fix this by adding the missing custom field:
+
+[9 tools called]
+
+Perfect! Now let's verify the custom field was created and clear the cache:
+
+[2 tools called]
+
+The custom field exists but the actual column hasn't been added to the Budget table yet. Let's run the migration to sync the schema:
+
+[1 tool called]
+
+Excellent! The migration completed successfully. Now let's verify that the customer column was added to the Budget table:
+
+[3 tools called]
+
+Found it! The column was created as `custom_customer` (with the "custom_" prefix), but the fieldname in the Custom Field is just `customer`. This is causing the mismatch. Let me fix this by updating the custom field to use the correct fieldname:
+
+[3 tools called]
+
+Perfect! Now let's verify the changes and clean up the temporary script:
+
+[2 tools called]
+
+Excellent! The fix is complete. Let me create a summary document explaining the issue and the solution:
+
+[1 tool called]
+
+## Summary
+
+I've successfully fixed the error! Here's what was wrong and what I did:
+
+### The Problem
+When you tried to submit a Payment Entry, ERPNext's budget validation system was triggered. It tried to query a column `tabBudget.customer` that didn't exist in the database, causing the MySQL error.
+
+### Root Cause
+You had an Accounting Dimension called "Customer" configured, but:
+1. The custom field was never properly created in the Budget DocType
+2. When Frappe created it during migration, it used the name `custom_customer` (with prefix)
+3. But the Accounting Dimension record still referenced `customer` (without prefix)
+4. This mismatch caused the SQL query to fail
+
+### The Fix
+I completed these steps:
+
+1. ✅ **Created the missing custom field** in the Budget DocType
+2. ✅ **Ran database migration** to add the `custom_customer` column to the Budget table
+3. ✅ **Updated both records** to use the consistent `custom_customer` fieldname
+4. ✅ **Cleared the cache** to ensure changes take effect
+
+### Verification
+All components are now aligned:
+- Accounting Dimension: `custom_customer` ✓
+- Custom Field: `custom_customer` ✓  
+- Database Column: `custom_customer` ✓
+
+### Test It
+You should now be able to submit Payment Entries without any errors. Try it out:
+1. Open or create a Payment Entry in draft status
+2. Fill in the required fields
+3. Click Submit
+
+The payment should submit successfully! I've also created a detailed fix document at `/home/agent/workspace/erpnext/PAYMENT_SUBMISSION_FIX.md` for future reference.
+████████████████████████████████████████████████
+
+## Adding October 2025 Axos Business Payments
+**Date**: October 30, 2025
+
+### Task
+Add missing October 2025 payment entries that came through Axos Business bank account.
+
+### Payments to Add
+| Date | Customer | Amount | Bank |
+|------|----------|--------|------|
+| 2025-10-16 | PI | $12,500 | Axos Business |
+| 2025-10-16 | MDC | $12,500 | Axos Business |
+| 2025-10-16 | PI | $2,700 | Axos Business |
+| 2025-10-16 | MDC | $2,700 | Axos Business |
+
+**Total**: $30,400 ($15,200 from PI, $15,200 from MDC)
+
+### Steps Taken
+
+#### 1. Created Axos Business Bank Account Setup
+Created `/home/agent/workspace/erpnext/migration/add_october_payments.sh` script that:
+- Creates Axos Bank in the system
+- Creates "Axos Business - DS" GL account under "Bank Accounts - DS"
+- Creates Bank Account record linking the GL account to Axos Bank
+- Adds all 4 payment entries with references:
+  - AXOS-20251016-1 (PI - $12,500)
+  - AXOS-20251016-2 (MDC - $12,500)
+  - AXOS-20251016-3 (PI - $2,700)
+  - AXOS-20251016-4 (MDC - $2,700)
+
+#### 2. Executed the Script
+Initial attempt with bash script and API calls failed due to network connectivity issues.
+
+Created Python script `/home/agent/workspace/erpnext/migration/create_october_payments.py` and executed it directly inside the ERPNext container:
+
+```bash
+docker exec -i erpnext-app bench --site erpnext.localhost console < /home/agent/workspace/erpnext/migration/create_october_payments.py
+```
+
+**Results**:
+- ✅ Axos Bank created
+- ✅ Axos Business - DS GL account created
+- ✅ Bank Account record created
+- ✅ All 4 payment entries created successfully:
+  - ACC-PAY-2025-00028: PI - $12,500 (AXOS-20251016-1)
+  - ACC-PAY-2025-00029: MDC - $12,500 (AXOS-20251016-2)
+  - ACC-PAY-2025-00030: PI - $2,700 (AXOS-20251016-3)
+  - ACC-PAY-2025-00031: MDC - $2,700 (AXOS-20251016-4)
+
+#### 3. Database Verification
+Verified all payments were created successfully:
+```bash
+docker exec erpnext-mariadb mysql -uerpnext -perpnext_password -D erpnext \
+  -e "SELECT name, posting_date, party, paid_amount, reference_no, paid_to, docstatus \
+      FROM \`tabPayment Entry\` WHERE reference_no LIKE 'AXOS%' ORDER BY name;"
+```
+
+All 4 payments confirmed in database with `docstatus=0` (Draft status).
+
+#### 4. Updated Master Import Script
+Updated `/home/agent/workspace/erpnext/migration/import_customer_payments.sh` to include the October 2025 Axos Business payments for future reference and consistency.
+
+### Summary
+Successfully added $30,400 in missing payment entries to ERPNext:
+- **PI Total**: $15,200 (2 payments)
+- **MDC Total**: $15,200 (2 payments)
+- **Bank**: Axos Business
+- **Date**: October 16, 2025
+
+All payment entries are now in the system in **Draft** status and ready to be reviewed and submitted through the ERPNext interface.
+
+### Next Steps
+1. Log into ERPNext at http://172.18.0.4:8001
+2. Navigate to Accounts → Payment Entry
+3. Review the 4 new payment entries (AXOS-20251016-1 through AXOS-20251016-4)
+4. Submit them to finalize the entries
+
+████████████████████████████████████████████████████
+I'll help you add these payment entries to ERPNext. Let me first check if there's an Axos Business account set up, and then create a script to add these payments.
+
+[2 tools called]
+
+I can see that there's no Axos Business account set up yet in ERPNext. The current system only has "Operating Bank - DS" (Chase). I'll create a script that:
+
+1. Sets up the Axos Business bank account
+2. Adds the 4 new payment entries
+
+[1 tool called]
+
+Now let me make the script executable and run it to add these payment entries:
+
+[2 tools called]
+
+Excellent! The payment entries have been successfully added to ERPNext. Now let me update the main import script to include these new payments for future reference:
+
+[1 tool called]
+
+Now let me update the progress file to document this work:
+
+[1 tool called]
+
+Let me verify the payments were successfully created by querying the ERPNext API:
+
+[1 tool called]
+
+Let me check all recent payment entries to verify they were created:
+
+[1 tool called]
+
+Let me try a simpler check without jq:
+
+[1 tool called]
+
+Let me check if the ERPNext server is running:
+
+[1 tool called]
+
+Let me try with the newer Docker Compose syntax:
+
+[1 tool called]
+
+The containers are running but I notice no port mapping is shown for the erpnext-app container. Let me check if the server is accessible:
+
+[1 tool called]
+
+The ERPNext server appears to not be accessible via the network. Let me check the docker-compose configuration:
+
+[1 tool called]
+
+I see the issue! The script was using port 8001 and IP 172.18.0.4, but according to the docker-compose file, ERPNext should be accessible via nginx on `localhost:8000`. Let me check if nginx is running:
+
+[1 tool called]
+
+The nginx container doesn't exist. Let me start all services properly and then try to verify the payments:
+
+[1 tool called]
+
+Port 8000 is already in use. Let me check what's using it and try connecting there:
+
+[1 tool called]
+
+Port 8000 is used by another application. Let me access the ERPNext database directly to check if the payments were created:
+
+[1 tool called]
+
+The payments were not created. Let me try creating them directly using the bench console within the container:
+
+[1 tool called]
+
+Now let me run this script inside the ERPNext container:
+
+[1 tool called]
+
+Perfect! The payments were successfully created! Let me verify them in the database:
+
+[1 tool called]
+
+Excellent! All payments are now in the system. Let me update the progress file with the correct method used:
+
+[1 tool called]
+
+Let me add the database verification to the progress file:
+
+[1 tool called]
+
+Perfect! Let me also create a summary document showing all the payments in the system:
+
+[1 tool called]
+
+Excellent! All payments are in the system. Let me create a final summary document:
+
+[1 tool called]
+
+Perfect! Let me create one final verification showing the complete payment history for both customers:
+
+[1 tool called]
+
+Interesting! Let me check what draft payments already existed in the system:
+
+[1 tool called]
+
+Perfect! Now I have the complete picture. Let me provide you with a comprehensive summary:
+
+## ✅ Task Completed Successfully!
+
+I've successfully added the 4 October 2025 Axos Business payment entries to ERPNext:
+
+### Payments Added Today
+
+| Payment ID | Date | Customer | Amount | Reference | Bank Account |
+|------------|------|----------|--------|-----------|--------------|
+| **ACC-PAY-2025-00028** | 2025-10-16 | PI | **$12,500** | AXOS-20251016-1 | Axos Business - DS |
+| **ACC-PAY-2025-00029** | 2025-10-16 | MDC | **$12,500** | AXOS-20251016-2 | Axos Business - DS |
+| **ACC-PAY-2025-00030** | 2025-10-16 | PI | **$2,700** | AXOS-20251016-3 | Axos Business - DS |
+| **ACC-PAY-2025-00031** | 2025-10-16 | MDC | **$2,700** | AXOS-20251016-4 | Axos Business - DS |
+
+**Total Added**: $30,400 ($15,200 from PI + $15,200 from MDC)
+
+### What Was Created
+
+1. ✅ **Axos Bank** - New bank entity in the system
+2. ✅ **Axos Business - DS** - New GL account under Bank Accounts
+3. ✅ **Bank Account Record** - Linking the GL account to Axos Bank
+4. ✅ **4 Payment Entries** - All in Draft status, ready for review and submission
+
+### Overall Payment Summary
+
+**MDC (15 total payments)**:
+- Submitted: $112,450.00
+- Draft: $60,200.00 (includes the 2 new payments: $15,200)
+- **Total: $172,650.00**
+
+**PI (13 total payments)**:
+- Submitted: $92,450.00
+- Draft: $30,200.00 (includes the 2 new payments: $15,200)
+- **Total: $122,650.00**
+
+### Important Notes
+
+1. **Draft Payments Found**: There are 7 older draft payments from 2024-2025 that were never submitted. You may want to review and submit those as well.
+
+2. **Missing from Original Query**: The March 28, 2025 payment returns (-$5,000 each) are still not recorded. These need special handling as negative payments/returns.
+
+### Next Steps
+
+1. **Review Draft Payments**: Access ERPNext and review all draft payment entries
+2. **Submit New Payments**: Submit the 4 new October payments (ACC-PAY-2025-00028 through 00031)
+3. **Review Old Drafts**: Consider submitting the 7 older draft payments from 2024-2025
+4. **Handle Returns**: Decide how to record the March 28, 2025 payment returns
+
+### Documentation Created
+
+- 📄 `/home/agent/workspace/erpnext/OCTOBER_PAYMENTS_SUMMARY.md` - Complete summary document
+- 📄 `/home/agent/workspace/erpnext/migration/create_october_payments.py` - Python script used
+- 📄 `/home/agent/workspace/erpnext/migration/add_october_payments.sh` - Alternative bash script
+- 📝 Updated `/home/agent/workspace/erpnext/progress.md` with full details
+
+All payments are now in the system and verified in the database! ✨
+████████████████████████████████████████████████████
+
+## Database Backup with Axos Payments
+**Date**: October 29, 2025
+
+### Backup Created
+Created comprehensive database backup after adding the October 2025 Axos Business payments.
+
+**Command Used**:
+```bash
+cd /home/agent/workspace/erpnext && make backup
+```
+
+**Backup Files Created**:
+1. **Database Backup**: `backups/erpnext_db_20251029_183839.sql` (8.2 MB)
+2. **Descriptive Copy**: `backups/erpnext_db_with_axos_payments_20251029.sql` (8.2 MB)
+3. **Site Backup**: `/home/frappe/frappe-bench/sites/erpnext.localhost/private/backups/`
+   - Config: `20251029_183839-erpnext_localhost-site_config_backup.json` (302 bytes)
+   - Database: `20251029_183839-erpnext_localhost-database.sql.gz` (844.8 KB)
+
+### Verification
+- ✅ Backup created successfully
+- ✅ File size: 8.2 MB
+- ✅ Contains all 4 AXOS payment references (verified)
+- ✅ Includes complete database with all payment entries:
+  - 15 MDC payments (total: $172,650.00)
+  - 13 PI payments (total: $122,650.00)
+  - Including 4 new Axos Business payments ($30,400.00)
+
+### Backup Contents Summary
+This backup includes:
+- All customer payments (MDC and PI)
+- All supplier/contractor records
+- Chart of Accounts with Axos Business bank account
+- All draft and submitted payment entries
+- Complete ERPNext site configuration
+
+### Restore Instructions
+To restore this backup:
+```bash
+# Using the Makefile
+cd /home/agent/workspace/erpnext
+make restore-db
+
+# Or manually
+docker exec -i erpnext-mariadb mysql -uerpnext -perpnext_password erpnext < backups/erpnext_db_with_axos_payments_20251029.sql
+```
+
+████████████████████████████████████████████████████

@@ -59,3 +59,9 @@ post_payment "PI" "2025-09-16" 12500 "CHASE-20250916-1"
 post_payment "MDC" "2025-09-16" 12500 "CHASE-20250916-2"
 post_payment "PI" "2025-09-17" 2450 "CHASE-20250917-1"
 post_payment "MDC" "2025-09-17" 2450 "CHASE-20250917-2"
+
+# October 2025 - Axos Business Payments
+post_payment "PI" "2025-10-16" 12500 "AXOS-20251016-1"
+post_payment "MDC" "2025-10-16" 12500 "AXOS-20251016-2"
+post_payment "PI" "2025-10-16" 2700 "AXOS-20251016-3"
+post_payment "MDC" "2025-10-16" 2700 "AXOS-20251016-4"
